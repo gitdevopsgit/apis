@@ -70,13 +70,32 @@ source .venv/bin/activate
 .venv\Scripts\activate
 ```
 
-### 4. Install Dependencies
+### 4. Create `.env` File
+
+Copy the `.env.example` file to `.env` and update with your credentials:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` file:
+```
+DATABASE_USER=postgres
+DATABASE_PASSWORD=postgres
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_NAME=fastapi
+```
+
+**⚠️ Important:** The `.env` file contains sensitive credentials and is added to `.gitignore` - NEVER commit it to version control!
+
+### 5. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 5. Verify Installation
+### 6. Verify Installation
 
 ```bash
 pip list
@@ -89,6 +108,7 @@ You should see:
 - python-multipart==0.0.6
 - sqlalchemy==2.0.23
 - psycopg2-binary==2.9.9
+- python-dotenv==1.0.0
 
 ---
 
@@ -108,23 +128,53 @@ CREATE DATABASE fastapi;
 -- Tables will be created automatically by SQLAlchemy when the app starts
 ```
 
-### 2. Database Credentials
+### 2. Configure Database Credentials
 
-The app uses these default PostgreSQL credentials:
+Edit the `.env` file with your PostgreSQL credentials:
 
+```
+DATABASE_USER=postgres
+DATABASE_PASSWORD=your_password_here
+DATABASE_HOST=localhost
+DATABASE_PORT=5432
+DATABASE_NAME=fastapi
+```
+
+**Default credentials (if using PostgreSQL default setup):**
+- **User:** postgres
+- **Password:** postgres
 - **Host:** localhost
 - **Port:** 5432
 - **Database:** fastapi
-- **User:** postgres
-- **Password:** postgres
 
-**To change credentials:** Edit `/Users/nitinkishore/PycharmProjects/apis/app/database.py`
+**To use different credentials:** Simply update the `.env` file values.
 
+### 3. How Environment Variables Work
+
+The application uses `python-dotenv` to load environment variables from the `.env` file:
+
+1. When the server starts, `app/database.py` loads the `.env` file
+2. Database credentials are read from environment variables
+3. The connection string is constructed dynamically
+4. The database connection is established
+
+**Example in `database.py`:**
 ```python
-DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/fastapi"
+from dotenv import load_dotenv
+import os
+
+load_dotenv()  # Load .env file
+
+DATABASE_USER = os.getenv("DATABASE_USER", "postgres")
+DATABASE_PASSWORD = os.getenv("DATABASE_PASSWORD", "postgres")
+DATABASE_HOST = os.getenv("DATABASE_HOST", "localhost")
+DATABASE_PORT = os.getenv("DATABASE_PORT", "5432")
+DATABASE_NAME = os.getenv("DATABASE_NAME", "fastapi")
+
+DATABASE_URL = f"postgresql://{DATABASE_USER}:{DATABASE_PASSWORD}@{DATABASE_HOST}:{DATABASE_PORT}/{DATABASE_NAME}"
 ```
 
-### 3. Automatic Table Creation
+### 4. Automatic Table Creation
 
 The application automatically creates tables on startup via this line in `api.py`:
 
@@ -133,7 +183,7 @@ models.Base.metadata.create_all(bind=engine)
 ```
 
 When the server starts:
-- ✅ Connects to PostgreSQL
+- ✅ Connects to PostgreSQL using `.env` credentials
 - ✅ Reads model definitions from `models.py`
 - ✅ Creates `posts` and `users` tables if they don't exist
 
@@ -563,20 +613,72 @@ uvicorn app.api:app --host 127.0.0.1 --port 8001 --reload
 
 ---
 
-## Environment Variables (Optional)
+## Environment Variables
 
-To make the app more secure, you can use environment variables:
+The application uses a `.env` file to manage database credentials securely. This prevents hardcoding sensitive information in the codebase.
 
-Create a `.env` file:
+### Setting Up Environment Variables
+
+1. **Copy the example file:**
+```bash
+cp .env.example .env
+```
+
+2. **Edit `.env` with your credentials:**
+```bash
+nano .env
+```
+
+3. **Update the values:**
 ```
 DATABASE_USER=postgres
-DATABASE_PASSWORD=postgres
+DATABASE_PASSWORD=your_secure_password
 DATABASE_HOST=localhost
 DATABASE_PORT=5432
 DATABASE_NAME=fastapi
 ```
 
-Then update `database.py` to read from environment variables.
+### Environment Variables Reference
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_USER` | postgres | PostgreSQL username |
+| `DATABASE_PASSWORD` | postgres | PostgreSQL password |
+| `DATABASE_HOST` | localhost | PostgreSQL host/server |
+| `DATABASE_PORT` | 5432 | PostgreSQL port |
+| `DATABASE_NAME` | fastapi | Database name |
+
+### Security Best Practices
+
+✅ **DO:**
+- Keep `.env` file in `.gitignore` (already configured)
+- Use strong passwords in production
+- Never commit `.env` to version control
+- Use `.env.example` as a template for team members
+
+❌ **DON'T:**
+- Commit `.env` file to git
+- Share `.env` file in emails or chat
+- Use weak passwords
+- Hardcode credentials in code
+
+### Loading in Different Environments
+
+**Development:**
+```bash
+# .env file is automatically loaded by python-dotenv
+uvicorn app.api:app --host 127.0.0.1 --port 8000 --reload
+```
+
+**Production:**
+Set environment variables directly on your server:
+```bash
+export DATABASE_USER=prod_user
+export DATABASE_PASSWORD=prod_password
+export DATABASE_HOST=prod_host
+export DATABASE_PORT=5432
+export DATABASE_NAME=prod_db
+```
 
 ---
 
